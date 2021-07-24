@@ -110,7 +110,7 @@ def start_scraper():
         login(driver, user["health_card"], user["fiscal_code"])
         is_vaccinated = find(driver, user["region"], user["country"], user["postal_code"], user["phone"], user["date"])
         if is_vaccinated:
-          controller.update_status(user["_id"], is_vaccinated)
+          asyncio.run(controller.update_status(user["_id"], is_vaccinated))
           asyncio.run(bot.send_message(
               user["_id"], "Ho notato che hai già effettuato una prenotazione perciò non controllerò le date per te.\n\nSe dovessi annullare la prenotazione e volessi essere notificato ancora digita /reset\n\nSe vuoi cancellare i tuoi dati digita /cancella"))
           continue
