@@ -21,7 +21,7 @@ Buchino controlla la disponibilità di un appuntamento per il vaccino al tuo pos
 
 ### Informativa sulla privacy
 - i dati vengono utilizzati ESCLUSIVAMENTE per controllare la disponibilità di un appuntamento per la vaccinazione sul sito https://start.prenotazionevaccinicovid.regione.lombardia.it
-- è possibile cancellare tutti i dati con il comando `\cancella`
+- è possibile cancellare tutti i dati con il comando `/cancella`
 - il codice del bot è opensource e chiunque può verificarne il funzionamento
 
 ## Comandi e funzionamento
@@ -39,9 +39,9 @@ Se l'utente ha già prenotato un appuntamento le sue notifiche saranno disabilit
 Per questo se si decidesse di annullare la prenotazione è necessario segnalarlo al bot in modo che questo possa tornare nuovamente ad effettuare la ricerca per tale utente.
 
 
-## Contribute
+## Come contribuire
 
-### Requirements
+### Requisiti
 Per contribuire allo sviluppo e al miglioramento del bot è richiesto:
 - `firefox`
 - `geckodriver`
@@ -55,7 +55,7 @@ Inoltre sono necessarie le sequenti dipendenze in Python:
 - `codicefiscale`
 - `phonenumbers`
 
-### Run
+### Eseguire Buchino
 1. Avviare mongodb: `systemctl start mongodb`
 2. Lanciare `init.py` per inserire i dati statici come province, comuni e CAP (solo la prima volta):
    ```
@@ -65,5 +65,5 @@ Inoltre sono necessarie le sequenti dipendenze in Python:
 4. Lanciare `main.py` per eseguire buchino: `python3 main.py`
 
 
-### Buy me a coffee
+### Offrimi un caffè
 [![paypal](https://www.paypalobjects.com/en_US/IT/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4MQQGEC9RVDD2)
