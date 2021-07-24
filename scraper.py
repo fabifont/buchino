@@ -122,7 +122,8 @@ def start_scraper():
         driver.delete_all_cookies()
         time.sleep(30)
       active_users = controller.get_active_users()
-      time.sleep(60 * int(15 / (1 if active_users < 50 else active_users / 50)))
+      if active_users > 0:
+        time.sleep(60 * int(15 / (1 if active_users < 50 else active_users / 50)))
     except Exception as e:
       driver.delete_all_cookies()
       LOGGER.error(e)
