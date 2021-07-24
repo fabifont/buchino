@@ -60,7 +60,7 @@ Inoltre sono necessarie le sequenti dipendenze in Python:
 1. Avviare mongodb: `systemctl start mongodb`
 2. Lanciare `init.py` per inserire i dati statici come province, comuni e CAP (solo la prima volta):
    ```
-   python3 -c "from init import init_places();init_places()"
+   python3 -c "from init import init_places;init_places()"
    ```
 3. Creare il file `config.ini` basandosi su `config.ini.example` e inserendo il token del proprio bot
 4. Lanciare `main.py` per eseguire buchino: `python3 main.py`
