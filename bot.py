@@ -82,7 +82,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
   await message.reply("Annullato.", reply_markup=types.ReplyKeyboardRemove())
 
 
-@dispatcher.message_handler(lambda message: not message.text.isdigit or len(message.text) != 20, state=Form.health_card)
+@dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 20, state=Form.health_card)
 async def process_invalid_health_card(message: types.Message):
   await message.reply("Il numero della tessera sanitaria deve essere composto da 20 cifre!\nRiprova.")
 
