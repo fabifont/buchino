@@ -113,3 +113,7 @@ def update_status(_id, is_vaccinated):
 
 def get_active_users():
   return len(User.objects(is_vaccinated=False))
+
+
+def get_user(_id):
+  return User.objects(_id=_id).first()

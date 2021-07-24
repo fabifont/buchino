@@ -1,7 +1,8 @@
 import numpy
 import math
-import controller as controller
 import logging
+import controller as controller
+import booker as booker
 from config import get_value
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -49,6 +50,10 @@ class Form(StatesGroup):
   country = State()
 
 
+class Booking(StatesGroup):
+  code = State()
+
+
 async def gen_markup(data, field, step):
   data = [elem[field] for elem in data]
   pool = numpy.array_split(data, math.ceil(len(data) / step))
@@ -82,7 +87,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
   await message.reply("Annullato.", reply_markup=types.ReplyKeyboardRemove())
 
 
-@dispatcher.message_handler(lambda message: not message.text.isdigit or len(message.text) != 20, state=Form.health_card)
+@dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 20, state=Form.health_card)
 async def process_invalid_health_card(message: types.Message):
   await message.reply("Il numero della tessera sanitaria deve essere composto da 20 cifre!\nRiprova.")
 
@@ -221,6 +226,27 @@ async def reset(message: types.Message):
 @dispatcher.message_handler(commands="info")
 async def info(message: types.Message):
   await message.reply(INFO_STR)
+
+
+@dispatcher.message_handler(commands="registra")
+async def book(message: types.Message):
+  if not await controller.check_appointment(message.chat.id):
+    await message.reply("Non ho ancora controllato se ci sono date disponibili, riprova dopo aver ricevuto la notifica di disponibilità.")
+  else:
+    await Booking.code.set()
+    await message.reply("Inserisci il codice di conferma che riceverai a breve tramite SMS.")
+
+
+@dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 6, state=Booking.code)
+async def process_invalid_code(message: types.Message):
+  await message.reply("Il codice inserito non è valido!\nRiprova.")
+
+
+@dispatcher.message_handler(state=Booking.code)
+async def process_code(message: types.Message, state: FSMContext):
+  await booker.add_booking(message.chat.id, message.text)
+  await bot.send_message(message.chat.id, "Richiesta di prenotazione ricevuta, a breve riceverai l'esito.")
+  await state.finish()
 
 
 def start_bot():
