@@ -120,8 +120,9 @@ def start_scraper():
           asyncio.run(bot.send_message(
               user["_id"], f"{'Prima data disponibile (ordinata per distanza)' if last_date == UNIX_EPOCH else 'Nuova data (ordinata per distanza, se non è più recente della precedente significa che quella non è più disponibile)'}: {time.strftime('%d/%m/%Y', result['date'])}\nLuogo: {result['place']}\n\nPrenota ora: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
         driver.delete_all_cookies()
+        time.sleep(30)
       active_users = controller.get_active_users()
-      time.sleep(60 * int(15 / ((50 if active_users < 50 else active_users / 50))))
+      time.sleep(60 * int(15 / (1 if active_users < 50 else active_users / 50)))
     except Exception as e:
       driver.delete_all_cookies()
       LOGGER.error(e)
