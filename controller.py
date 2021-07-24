@@ -105,10 +105,14 @@ def update_date_and_place(_id, last_date, last_place):
   )
 
 
-def update_status(_id, is_vaccinated):
-  User.objects(_id=_id).update(
+async def update_status(_id, is_vaccinated):
+  User.objects(_id=str(_id)).update(
       set__is_vaccinated=is_vaccinated
   )
+
+
+async def get_status(_id):
+  return User.objects.get(_id=str(_id)).is_vaccinated
 
 
 def get_active_users():
