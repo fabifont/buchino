@@ -3,12 +3,14 @@ import math
 import logging
 import controller as controller
 import booker as booker
+import asyncio
 from config import get_value
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
+from aiogram.types import ContentType
 from aiogram.utils import executor
 from validation import validate_fiscal_code, validate_phone, decode_fiscal_code
 
@@ -51,6 +53,7 @@ class Form(StatesGroup):
 
 
 class Booking(StatesGroup):
+  appointment = State()
   code = State()
 
 
@@ -181,8 +184,6 @@ async def process_country(message: types.Message, state: FSMContext):
   async with state.proxy() as data:
     data["country"] = message.text
 
-    markup = types.ReplyKeyboardRemove()
-
     user = await decode_fiscal_code(data["fiscal_code"])
     user["_id"] = message.chat.id
     user["health_card"] = data["health_card"]
@@ -197,7 +198,7 @@ async def process_country(message: types.Message, state: FSMContext):
     await bot.send_message(
         message.chat.id,
         f"L'utente è stato registrato con successo con i seguenti dati:\nid: <pre>{user['_id']}</pre>\ntessera sanitaria: <pre>{user['health_card']}</pre>\ncodice fiscale: <pre>{user['fiscal_code']}</pre>\ndata di nascita: <pre>{user['date']}</pre>\nprovincia: <pre>{user['region']}</pre>\ncomune: <pre>{user['country']}</pre>\ncap: <pre>{user['postal_code']}</pre>\ntelefono: <pre>{user['phone']}</pre>\n\nEntro 30 minuti riceverai la prima data disponibile ordinata per distanza.",
-        reply_markup=markup,
+        reply_markup=types.ReplyKeyboardRemove(),
         parse_mode=ParseMode.HTML
     )
 
@@ -228,24 +229,48 @@ async def info(message: types.Message):
   await message.reply(INFO_STR)
 
 
-@dispatcher.message_handler(commands="registra")
+@dispatcher.message_handler(commands="prenota")
 async def book(message: types.Message):
-  if not await controller.check_appointment(message.chat.id):
+  if not await controller.check_appointments(message.chat.id):
     await message.reply("Non ho ancora controllato se ci sono date disponibili, riprova dopo aver ricevuto la notifica di disponibilità.")
   else:
+    await controller.change_booking_state(message.chat.id, True)
+    await Booking.appointment.set()
+    markup = await gen_markup(await controller.get_appointments(message.chat.id), "info", 1)
+    await message.reply("Scegli un appuntamento tra quelli disponibili. Le date sono ordinate per distanza.", reply_markup=markup)
+
+
+@dispatcher.message_handler(lambda message: not controller.is_same_appointment(message.chat.id, message.text), state=Booking.appointment)
+async def process_invalid_appointment(message: types.Message):
+  await message.reply("L'appuntamento scelto non è valido!\nRiprova.")
+
+
+@dispatcher.message_handler(state=Booking.appointment)
+async def process_appointment(message: types.Message, state: FSMContext):
+  with open("appointments.txt", "a+") as f:
+    f.writelines(f"{message.chat.id}%{message.text}")
+  await bot.send_message(message.chat.id, "Richiesta di prenotazione ricevuta, se l'appuntamento sarà ancora disponibile ti verrà chiesto un codice in seguito.", reply_markup=types.ReplyKeyboardRemove())
+  await state.finish()
+
+
+@dispatcher.message_handler(commands="codice")
+async def code(message: types.Message):
+  if not await controller.is_booking(message.chat.id):
+    await message.reply("Non puoi usare questo comando se non stai prenotando un'appuntamento con /prenota")
+  else:
     await Booking.code.set()
-    await message.reply("Inserisci il codice di conferma che riceverai a breve tramite SMS.")
+    await message.reply("Inserisci il codice che hai ricevuto tramite SMS.")
 
 
 @dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 6, state=Booking.code)
 async def process_invalid_code(message: types.Message):
-  await message.reply("Il codice inserito non è valido!\nRiprova.")
+  await message.reply("Il codice non è valido!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Booking.code)
 async def process_code(message: types.Message, state: FSMContext):
-  await booker.add_booking(message.chat.id, message.text)
-  await bot.send_message(message.chat.id, "Richiesta di prenotazione ricevuta, a breve riceverai l'esito.")
+  with open("codes.txt", "a+") as f:
+    f.writelines(f"{message.chat.id}%{message.text}")
   await state.finish()
 
 
