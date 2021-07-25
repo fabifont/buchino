@@ -30,6 +30,7 @@ Di seguito sono elencati i comandi che puoi utilizzare nel bot:
 - `/start`: avvia il bot (non la ricerca)
 - `/registra`: avvia il processo di registrazione
 - `/annulla`: annulla il processo di registrazione/prenotazione
+- `/stop`: termina la ricerca e disabilita le notifiche
 - `/reset`: abilita nuovamente le notifiche
 - `/cancella`: cancella tutti i tuoi dati
 - `/prenota`: inizia il processo di prenotazione
