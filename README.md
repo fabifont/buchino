@@ -29,7 +29,7 @@ Buchino controlla la disponibilità di un appuntamento per il vaccino al tuo pos
 Di seguito sono elencati i comandi che puoi utilizzare nel bot:
 - `/start`: avvia il bot (non la ricerca)
 - `/registra`: avvia il processo di registrazione
-- `/annulla`: annulla il processo di registrazione
+- `/annulla`: annulla il processo di registrazione/prenotazione
 - `/reset`: abilita nuovamente le notifiche
 - `/cancella`: cancella tutti i tuoi dati
 - `/prenota`: inizia il processo di prenotazione
