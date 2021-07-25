@@ -28,6 +28,7 @@ Di seguito sono elencati i comandi che puoi utilizzare nel bot:
 /start: avvia il bot (non la ricerca)
 /registra: avvia il processo di registrazione
 /annulla: annulla il processo di registrazione/prenotazione
+/stop: termina la ricerca e disabilita le notifiche
 /reset: abilita nuovamente le notifiche
 /cancella: cancella tutti i tuoi dati
 /prenota: inizia il processo di prenotazione
@@ -221,8 +222,23 @@ async def delete(message: types.Message):
 @dispatcher.message_handler(commands="reset")
 async def reset(message: types.Message):
   if await controller.check_user(message.chat.id):
-    await controller.update_status(message.chat.id, False)
-    await message.reply("Le notifiche sono state riabilitate.")
+    if not await controller.get_status(message.chat.id):
+      await message.reply("Le notifiche sono già abilitate.")
+    else:
+      await controller.update_status(message.chat.id, False)
+      await message.reply("Le notifiche sono state riabilitate.")
+  else:
+    await message.reply("Non hai ancora registrato i tuoi dati.")
+
+
+@dispatcher.message_handler(commands="stop")
+async def stop(message: types.Message):
+  if await controller.check_user(message.chat.id):
+    if await controller.get_status(message.chat.id):
+      await message.reply("Le notifiche sono già disabilitate.")
+    else:
+      await controller.update_status(message.chat.id, True)
+      await message.reply("Le notifiche sono state disabilitate.")
   else:
     await message.reply("Non hai ancora registrato i tuoi dati.")
 

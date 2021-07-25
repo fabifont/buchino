@@ -149,6 +149,10 @@ async def update_status(_id, is_vaccinated):
   )
 
 
+async def get_status(_id):
+  return User.objects.get(_id=str(_id)).is_vaccinated
+
+
 def get_active_users():
   return len(User.objects(is_vaccinated=False))
 
