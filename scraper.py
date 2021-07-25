@@ -110,14 +110,14 @@ def start_scraper():
         login(driver, user["health_card"], user["fiscal_code"])
         is_vaccinated = find(driver, user["region"], user["country"], user["postal_code"], user["phone"], user["date"])
         if is_vaccinated:
-          asyncio.run(controller.update_status(user["_id"], is_vaccinated))
-          asyncio.run(bot.send_message(
+          asyncio.get_event_loop().run_until_complete(controller.update_status(user["_id"], is_vaccinated))
+          asyncio.get_event_loop().run_until_complete(bot.send_message(
               user["_id"], "Ho notato che hai già effettuato una prenotazione perciò non controllerò le date per te.\n\nSe dovessi annullare la prenotazione e volessi essere notificato ancora digita /reset\n\nSe vuoi cancellare i tuoi dati digita /cancella"))
           continue
         result = check(driver, last_date, user["last_place"])
         if result is not None:
           controller.update_date_and_place(user["_id"], time.strftime("%d/%m/%Y", result["date"]), result["place"])
-          asyncio.run(bot.send_message(
+          asyncio.get_event_loop().run_until_complete(bot.send_message(
               user["_id"], f"{'Prima data disponibile (ordinata per distanza)' if last_date == UNIX_EPOCH else 'Nuova data (ordinata per distanza, se non è più recente della precedente significa che quella non è più disponibile)'}: {time.strftime('%d/%m/%Y', result['date'])}\nLuogo: {result['place']}\n\nPrenota ora: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
         driver.delete_all_cookies()
         time.sleep(30)
