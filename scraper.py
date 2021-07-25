@@ -112,14 +112,14 @@ def check(driver):
     date = f"{(info[0].text)[-10:]} {(info[1].text)[-5:]}:00"
     new_appointment = {"date": date, "place": place}
     appointments_by_date.append(new_appointment)
-  return {"appointments_by_distance": appointments_by_distance, "appointments_by_date": appointments_by_date, "last_fetch": time.strftime("%d/%m/%Y %H:%M:%S", time.gmtime())}
+  return {"appointments_by_distance": appointments_by_distance, "appointments_by_date": appointments_by_date, "last_fetch": time.strftime("%d/%m/%Y %H:%M:%S", time.localtime())}
 
 
 def start_scraper():
   LOGGER.info("Starting scraper.")
   bot = Bot(get_value("token"))
   options = webdriver.firefox.options.Options()
-  # options.headless = True
+  options.headless = True
   driver = webdriver.Firefox(options=options)
   while True:
     try:
@@ -128,7 +128,7 @@ def start_scraper():
         if user["is_vaccinated"]:
           continue
         last_appointments_by_distance = user["appointments_by_distance"]
-        last_appointments_by_date = user["appointments_by_date"]  # time.strptime(user["last_date"], "%d/%m/%Y")
+        last_appointments_by_date = user["appointments_by_date"]
         login(driver, user["health_card"], user["fiscal_code"])
         if FAKE_USER in driver.page_source:
           asyncio.get_event_loop().run_until_complete(controller.delete_user(user["_id"]))
@@ -159,8 +159,11 @@ def start_scraper():
             asyncio.run(bot.send_message(
                 user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /tutti e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
         driver.delete_all_cookies()
+        time.sleep(30)
       active_users = controller.get_active_users()
-      time.sleep(60 * int(15 / ((50 if active_users < 50 else active_users / 50))))
+      if active_users > 0:
+        sleep_time = 60 * int(15 if active_users < 50 else (15 / (active_users / 50)))
+        time.sleep(sleep_time)
     except Exception as e:
       driver.delete_all_cookies()
       LOGGER.exception(e)

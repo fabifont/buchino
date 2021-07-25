@@ -25,6 +25,10 @@ async def is_vaccinated(_id):
   return User.objects.get(_id=str(_id)).is_vaccinated
 
 
+async def get_last_fetch(_id):
+  return User.objects.get(_id=str(_id)).last_fetch
+
+
 async def change_booking_state(_id, is_booking):
   User.objects(_id=str(_id)).update(
       set__is_booking=is_booking

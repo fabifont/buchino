@@ -113,7 +113,12 @@ def start_booker():
           asyncio.get_event_loop().run_until_complete(bot.send_message(user["_id"], "L'appuntamento che volevi prenotare non è più disponibile."))
         asyncio.get_event_loop().run_until_complete(controller.change_booking_state(user["_id"], False))
         driver.delete_all_cookies()
+      time.sleep(30)
     except Exception as e:
       asyncio.get_event_loop().run_until_complete(controller.change_booking_state(user["_id"], False))
       driver.delete_all_cookies()
       LOGGER.exception(e)
+      if "Sessione scaduta" in driver.page_source:
+        LOGGER.info("IP bannato")
+        time.sleep(60 * 60)
+      time.sleep(60 * 5)

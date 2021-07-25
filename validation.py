@@ -22,4 +22,4 @@ def validate_phone(phone):
 
 async def decode_fiscal_code(fiscal_code):
   decoded_fiscal_code = codicefiscale.decode(fiscal_code)
-  return {"fiscal_code": fiscal_code, "date": decoded_fiscal_code["birthdate"].strftime("%d/%m/%Y")}
+  return {"fiscal_code": fiscal_code.upper(), "date": decoded_fiscal_code["birthdate"].strftime("%d/%m/%Y")}

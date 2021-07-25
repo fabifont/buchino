@@ -13,7 +13,10 @@ from validation import validate_fiscal_code, validate_phone, decode_fiscal_code
 
 
 WELCOME_STR = """
-Questo bot ti notifica quando viene rilevata una data più recente per la prenotazione del vaccino.\n
+Questo bot ti notifica quando viene rilevata una data più recente per la prenotazione del vaccino in Lombardia.\n
+Il bot salva tutte le date disponibili ma ne mostrerà al massimo 2 (la più recente in base alla distanza e la più recente in assoluto).\n
+È comunque possibile vedere le altre date con il comando /disponibili\n
+Se vuoi prenotare un appuntamento ti basta digitare /prenota per avviare la procedura.\n
 Per iniziare il processo di registrazione dei dati necessari al controllo degli appuntamenti digita /registra\n
 Per cancellare i tuoi dati registrati digita /cancella\n
 Per vedere il resto dei comandi o avere informazioni sul sito ufficiale ed il gruppo di assistenza digita /info
@@ -291,7 +294,8 @@ async def available(message: types.Message):
     else:
       appointments = await controller.get_appointments(message.chat.id)
       appointments_message = "".join(f"{appointment['info']}\n\n" for appointment in appointments)
-      message.reply(f"Questi sono gli ultimi appuntamenti trovati ordinati per distanza:\n{appointments_message}")
+      last_fetch = await controller.get_last_fetch(message.chat.id)
+      await message.reply(f"Questi sono gli ultimi appuntamenti trovati ordinati per distanza:\n\n{appointments_message}Ultimo aggiornamento: {last_fetch}\n\nDigita /prenota per prenotarne uno.")
   else:
     await message.reply("Non ci sono dati registrati.")
 
