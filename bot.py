@@ -2,15 +2,12 @@ import numpy
 import math
 import logging
 import controller as controller
-import booker as booker
-import asyncio
 from config import get_value
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
-from aiogram.types import ContentType
 from aiogram.utils import executor
 from validation import validate_fiscal_code, validate_phone, decode_fiscal_code
 
@@ -27,9 +24,12 @@ INFO_STR = """
 Di seguito sono elencati i comandi che puoi utilizzare nel bot:
 /start: avvia il bot (non la ricerca)
 /registra: avvia il processo di registrazione
-/annulla: annulla il processo di registrazione
+/annulla: annulla il processo di registrazione/prenotazione
 /reset: abilita nuovamente le notifiche
 /cancella: cancella tutti i tuoi dati
+/prenota: inizia il processo di prenotazione
+/codice: effettua la richiesta del codice di conferma
+/disponibili: mostra gli ultimi appuntamenti trovati
 /info: stampa tutti i comandi ed informazioni aggiuntive\n
 Se volessi segnalare un problema o contribuire allo sviluppo del bot visita la pagina ufficiale:
 https://github.com/fabifont/buchino
@@ -231,13 +231,19 @@ async def info(message: types.Message):
 
 @dispatcher.message_handler(commands="prenota")
 async def book(message: types.Message):
-  if not await controller.check_appointments(message.chat.id):
-    await message.reply("Non ho ancora controllato se ci sono date disponibili, riprova dopo aver ricevuto la notifica di disponibilità.")
+  if await controller.check_user(message.chat.id):
+    if await controller.is_vaccinated(message.chat.id):
+      await message.reply("Risulti già essere prenotato per la vaccinazione oppure hai disabilitato manualmente le notifiche.")
+    else:
+      if not await controller.check_appointments(message.chat.id):
+        await message.reply("Non ho ancora controllato se ci sono date disponibili, riprova dopo aver ricevuto la notifica di disponibilità.")
+      else:
+        await controller.change_booking_state(message.chat.id, True)
+        await Booking.appointment.set()
+        markup = await gen_markup(await controller.get_appointments(message.chat.id), "info", 1)
+        await message.reply("Scegli un appuntamento tra quelli disponibili. Le date sono ordinate per distanza.", reply_markup=markup)
   else:
-    await controller.change_booking_state(message.chat.id, True)
-    await Booking.appointment.set()
-    markup = await gen_markup(await controller.get_appointments(message.chat.id), "info", 1)
-    await message.reply("Scegli un appuntamento tra quelli disponibili. Le date sono ordinate per distanza.", reply_markup=markup)
+    await message.reply("Non ci sono dati registrati.")
 
 
 @dispatcher.message_handler(lambda message: not controller.is_same_appointment(message.chat.id, message.text), state=Booking.appointment)
@@ -255,11 +261,14 @@ async def process_appointment(message: types.Message, state: FSMContext):
 
 @dispatcher.message_handler(commands="codice")
 async def code(message: types.Message):
-  if not await controller.is_booking(message.chat.id):
-    await message.reply("Non puoi usare questo comando se non stai prenotando un'appuntamento con /prenota")
+  if await controller.check_user(message.chat.id):
+    if not await controller.is_booking(message.chat.id):
+      await message.reply("Non puoi usare questo comando se non stai prenotando un appuntamento con /prenota")
+    else:
+      await Booking.code.set()
+      await message.reply("Inserisci il codice che hai ricevuto tramite SMS.")
   else:
-    await Booking.code.set()
-    await message.reply("Inserisci il codice che hai ricevuto tramite SMS.")
+    await message.reply("Non ci sono dati registrati.")
 
 
 @dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 6, state=Booking.code)
@@ -272,6 +281,19 @@ async def process_code(message: types.Message, state: FSMContext):
   with open("codes.txt", "a+") as f:
     f.writelines(f"{message.chat.id}%{message.text}")
   await state.finish()
+
+
+@dispatcher.message_handler(commands="disponibili")
+async def available(message: types.Message):
+  if await controller.check_user(message.chat.id):
+    if await controller.is_vaccinated(message.chat.id):
+      await message.reply("Risulti già essere prenotato per la vaccinazione oppure hai disabilitato manualmente le notifiche.")
+    else:
+      appointments = await controller.get_appointments(message.chat.id)
+      appointments_message = "".join(f"{appointment['info']}\n\n" for appointment in appointments)
+      message.reply(f"Questi sono gli ultimi appuntamenti trovati ordinati per distanza:\n{appointments_message}")
+  else:
+    await message.reply("Non ci sono dati registrati.")
 
 
 def start_bot():

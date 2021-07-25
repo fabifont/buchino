@@ -119,7 +119,7 @@ def start_scraper():
   LOGGER.info("Starting scraper.")
   bot = Bot(get_value("token"))
   options = webdriver.firefox.options.Options()
-  options.headless = True
+  # options.headless = True
   driver = webdriver.Firefox(options=options)
   while True:
     try:
@@ -130,7 +130,7 @@ def start_scraper():
         last_appointments_by_distance = user["appointments_by_distance"]
         last_appointments_by_date = user["appointments_by_date"]  # time.strptime(user["last_date"], "%d/%m/%Y")
         login(driver, user["health_card"], user["fiscal_code"])
-        if FAKE_USER in driver.page_source():
+        if FAKE_USER in driver.page_source:
           asyncio.get_event_loop().run_until_complete(controller.delete_user(user["_id"]))
           asyncio.get_event_loop().run_until_complete(bot.send_message(
               user["_id"], "Ho cancellato i dati che hai registrato perchè non sono corretti. Esegui /cancella e rieffettua la registrazione con /registra"))
@@ -164,3 +164,7 @@ def start_scraper():
     except Exception as e:
       driver.delete_all_cookies()
       LOGGER.exception(e)
+      if "Sessione scaduta" in driver.page_source:
+        LOGGER.info("IP bannato")
+        time.sleep(60 * 60)
+      time.sleep(60 * 5)
