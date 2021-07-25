@@ -130,10 +130,11 @@ def start_scraper():
         last_appointments_by_distance = user["appointments_by_distance"]
         last_appointments_by_date = user["appointments_by_date"]
         login(driver, user["health_card"], user["fiscal_code"])
+        time.sleep(3)
         if FAKE_USER in driver.page_source:
           asyncio.get_event_loop().run_until_complete(controller.delete_user(user["_id"]))
           asyncio.get_event_loop().run_until_complete(bot.send_message(
-              user["_id"], "Ho cancellato i dati che hai registrato perchè non sono corretti. Esegui /cancella e rieffettua la registrazione con /registra"))
+              user["_id"], "Ho cancellato i dati che hai registrato perchè non sono corretti. Rieffettua la registrazione con /registra"))
         is_vaccinated = find(driver, user["region"], user["country"], user["postal_code"], user["phone"], user["date"])
         if is_vaccinated:
           asyncio.get_event_loop().run_until_complete(controller.update_status(user["_id"], is_vaccinated))
