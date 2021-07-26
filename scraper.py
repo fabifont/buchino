@@ -158,7 +158,7 @@ def start_scraper():
 
           if new_by_distance != "" or new_by_date != "":
             asyncio.run(bot.send_message(
-                user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /tutti e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
+                user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /disponibili e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
         driver.delete_all_cookies()
         time.sleep(30)
       active_users = controller.get_active_users()
