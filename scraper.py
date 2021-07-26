@@ -232,7 +232,7 @@ def start_scraper():
         if is_vaccinated:
           # set user is_vaccinated to True to stop checking for him and send him a notification
           asyncio.get_event_loop().run_until_complete(controller.update_status(user["_id"], is_vaccinated))
-          asyncio.run(bot.send_message(
+          asyncio.get_event_loop().run_until_complete(bot.send_message(
               user["_id"], "Ho notato che hai già effettuato una prenotazione perciò non controllerò le date per te.\n\nSe dovessi annullare la prenotazione e volessi essere notificato ancora digita /reset\n\nSe vuoi cancellare i tuoi dati digita /cancella"))
           # wait 30 seconds for next user
           time.sleep(30)
@@ -264,7 +264,7 @@ def start_scraper():
 
           # if new first appointments have been found send a notification
           if new_by_distance != "" or new_by_date != "":
-            asyncio.run(bot.send_message(
+            asyncio.get_event_loop().run_until_complete(bot.send_message(
                 user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /disponibili e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
         # clear cookies and wait 30 seconds for next user
         driver.delete_all_cookies()
