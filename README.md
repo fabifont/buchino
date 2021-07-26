@@ -46,6 +46,9 @@ Una volta trovata la prima data il bot permette di effettuare la prenotazione di
 
 ## Come contribuire
 
+### Documentazione
+https://fabifont.github.io/buchino
+
 ### Requisiti
 Per contribuire allo sviluppo e al miglioramento del bot è richiesto:
 - `firefox`
@@ -68,6 +71,10 @@ Inoltre sono necessarie le sequenti dipendenze in Python:
    ```
 3. Creare il file `config.ini` basandosi su `config.ini.example` e inserendo il token del proprio bot
 4. Lanciare `main.py` per eseguire buchino: `python3 main.py`
+
+### Buildare la documentazione
+1. Installa pdoc3 se non lo hai già: `pip install pdoc3`
+2. Esegui `pdoc -d google *.py doc/`
 
 
 ### Offrimi un caffè
