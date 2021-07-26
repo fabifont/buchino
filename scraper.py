@@ -143,6 +143,8 @@ def find(driver, region, country, postal_code, phone, date):
     driver.execute_script("arguments[0].style.visibility='hidden'", overlay)
   except Exception:
     pass
+  # TODO 4: above overlay can appear also after clicking on a 'select'
+  # TODO 5: wait for 'select' elements to appear (useful when the website is slow)
   driver.find_element_by_xpath("//select[@formcontrolname='provinceId']").click()
   Select(driver.find_element_by_xpath("//select[@formcontrolname='provinceId']")).select_by_visible_text(region)
   driver.find_element_by_xpath("//select[@formcontrolname='cityId']").click()
@@ -263,7 +265,7 @@ def start_scraper():
           # if new first appointments have been found send a notification
           if new_by_distance != "" or new_by_date != "":
             asyncio.run(bot.send_message(
-                user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /tutti e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
+                user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /disponibili e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
         # clear cookies and wait 30 seconds for next user
         driver.delete_all_cookies()
         time.sleep(30)
@@ -275,12 +277,15 @@ def start_scraper():
         time.sleep(sleep_time)
     except Exception as e:
       LOGGER.exception(e)
-      # clear cookies
-      driver.delete_all_cookies()
-      # check for IP ban
-      if "Sessione scaduta" in driver.page_source:
-        LOGGER.info("IP bannato")
-        # wait 60 minutes but I think it's useless, need to change IP
-        time.sleep(60 * 60)
+      try:
+        # clear cookies
+        driver.delete_all_cookies()
+        # check for IP ban
+        if "Sessione scaduta" in driver.page_source:
+          LOGGER.info("IP bannato")
+          # wait 60 minutes but I think it's useless, need to change IP
+          time.sleep(60 * 60)
+      except Exception as e:
+        LOGGER.exception(e)
       # wait 5 minutes
       time.sleep(60 * 5)
