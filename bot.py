@@ -12,6 +12,7 @@ from aiogram.utils import executor
 from validation import validate_fiscal_code, validate_phone, decode_fiscal_code
 
 
+# welcome message (e.g /start)
 WELCOME_STR = """
 Questo bot ti notifica quando viene rilevata una data più recente per la prenotazione del vaccino in Lombardia.\n
 Il bot salva tutte le date disponibili ma ne mostrerà al massimo 2 (la più recente in base alla distanza e la più recente in assoluto).\n
@@ -23,6 +24,7 @@ Per vedere il resto dei comandi o avere informazioni sul sito ufficiale ed il gr
 """
 
 
+# info message (e.g. /info)
 INFO_STR = """
 Di seguito sono elencati i comandi che puoi utilizzare nel bot:
 /start: avvia il bot (non la ricerca)
@@ -42,11 +44,14 @@ https://t.me/assistenza_buchinobot
 """
 
 
+# logger
 LOGGER = logging.getLogger()
+# bot istance and dispatcher
 bot = Bot(get_value("token"))
 dispatcher = Dispatcher(bot, storage=MemoryStorage())
 
 
+# states for /registra
 class Form(StatesGroup):
   health_card = State()
   fiscal_code = State()
@@ -56,12 +61,23 @@ class Form(StatesGroup):
   country = State()
 
 
+# states for /prenota and /codice
 class Booking(StatesGroup):
   appointment = State()
   code = State()
 
 
 async def gen_markup(data, field, step):
+  """Return KeyboardMarkup with rows of 'step' columns containing 'data["field"]' values
+
+  Args:
+      data (dict): data dict
+      field (string): key from which to get the value
+      step (int): number of wanted columns
+
+  Returns:
+      ReplyKeyboardMarkup: keyboard of buttons
+  """
   data = [elem[field] for elem in data]
   pool = numpy.array_split(data, math.ceil(len(data) / step))
   markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
@@ -72,13 +88,17 @@ async def gen_markup(data, field, step):
 
 @dispatcher.message_handler(commands="start")
 async def start(message: types.Message):
+  """Reply welcome message to /start command"""
   await message.reply(WELCOME_STR)
 
 
 @dispatcher.message_handler(commands="registra")
 async def signup(message: types.Message):
+  """Handle /registra command"""
+  # if user already exists
   if await controller.check_user(message.chat.id):
     await message.reply("Sei già registrato.")
+  # else set state and ask for health card number
   else:
     await Form.health_card.set()
     await message.reply("Inserisci il numero della tessera sanitaria.")
@@ -86,10 +106,13 @@ async def signup(message: types.Message):
 
 @dispatcher.message_handler(state="*", commands="annulla")
 async def cancel_handler(message: types.Message, state: FSMContext):
+  """Cancel signup/booking process"""
+  # if user wasn't into a signup/booking process do nothing
   current_state = await state.get_state()
   if current_state is None:
     return
 
+  # finish state, remove keyboard and send a notification
   await state.finish()
   await message.reply("Annullato.", reply_markup=types.ReplyKeyboardRemove())
 
