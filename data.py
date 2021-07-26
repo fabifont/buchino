@@ -1628,6 +1628,11 @@ regions = [
 
 
 def get_regions():
+  """Return list of region names
+
+  Returns:
+      list (string): region names
+  """
   regions_list = []
   for region in regions:
     regions_list.append(list(region.keys())[0])
@@ -1635,6 +1640,14 @@ def get_regions():
 
 
 def get_postal_codes(_region):
+  """Return list of postal codes of the region
+
+  Args:
+      _region (string): region name
+
+  Returns:
+      list (string): postal codes of the region
+  """
   postal_codes_list = []
   for region in regions:
     if _region == list(region.keys())[0]:
@@ -1647,6 +1660,15 @@ def get_postal_codes(_region):
 
 
 def get_countries(_region, _postal_code):
+  """Return list of countries of the region that match postal code
+
+  Args:
+      _region (string): region name
+      _postal_code (string): country postal code
+
+  Returns:
+      list (string): country names
+  """
   countries_list = []
   for region in regions:
     if _region == list(region.keys())[0]:
