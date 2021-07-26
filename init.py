@@ -4,6 +4,8 @@ from place import Region, Country, Cap
 
 
 def init_places():
+  """Insert static data into the database (e.g. regions, countries, postal codes)
+  """
   mongoengine.connect(host="mongodb://127.0.0.1:27017/buchino")
   regions = data.get_regions()
   for region in regions:

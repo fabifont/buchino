@@ -12,6 +12,7 @@ from aiogram.utils import executor
 from validation import validate_fiscal_code, validate_phone, decode_fiscal_code
 
 
+# welcome message (e.g /start)
 WELCOME_STR = """
 Questo bot ti notifica quando viene rilevata una data più recente per la prenotazione del vaccino in Lombardia.\n
 Il bot salva tutte le date disponibili ma ne mostrerà al massimo 2 (la più recente in base alla distanza e la più recente in assoluto).\n
@@ -23,6 +24,7 @@ Per vedere il resto dei comandi o avere informazioni sul sito ufficiale ed il gr
 """
 
 
+# info message (e.g. /info)
 INFO_STR = """
 Di seguito sono elencati i comandi che puoi utilizzare nel bot:
 /start: avvia il bot (non la ricerca)
@@ -42,11 +44,14 @@ https://t.me/assistenza_buchinobot
 """
 
 
+# logger
 LOGGER = logging.getLogger()
+# bot istance and dispatcher
 bot = Bot(get_value("token"))
 dispatcher = Dispatcher(bot, storage=MemoryStorage())
 
 
+# states for /registra
 class Form(StatesGroup):
   health_card = State()
   fiscal_code = State()
@@ -56,12 +61,23 @@ class Form(StatesGroup):
   country = State()
 
 
+# states for /prenota and /codice
 class Booking(StatesGroup):
   appointment = State()
   code = State()
 
 
 async def gen_markup(data, field, step):
+  """Return KeyboardMarkup with rows of 'step' columns containing 'data["field"]' values
+
+  Args:
+      data (dict): data dict
+      field (string): key from which to get the value
+      step (int): number of wanted columns
+
+  Returns:
+      ReplyKeyboardMarkup: keyboard of buttons
+  """
   data = [elem[field] for elem in data]
   pool = numpy.array_split(data, math.ceil(len(data) / step))
   markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
@@ -72,13 +88,17 @@ async def gen_markup(data, field, step):
 
 @dispatcher.message_handler(commands="start")
 async def start(message: types.Message):
+  """Reply with welcome message to /start command"""
   await message.reply(WELCOME_STR)
 
 
 @dispatcher.message_handler(commands="registra")
 async def signup(message: types.Message):
+  """Handle /registra command"""
+  # if user already exists
   if await controller.check_user(message.chat.id):
     await message.reply("Sei già registrato.")
+  # else set state and ask for health card number
   else:
     await Form.health_card.set()
     await message.reply("Inserisci il numero della tessera sanitaria.")
@@ -86,108 +106,127 @@ async def signup(message: types.Message):
 
 @dispatcher.message_handler(state="*", commands="annulla")
 async def cancel_handler(message: types.Message, state: FSMContext):
+  """Cancel signup/booking process"""
+  # if user wasn't into a signup/booking process do nothing
   current_state = await state.get_state()
   if current_state is None:
     return
-
+  # finish state, remove keyboard and send a notification
   await state.finish()
   await message.reply("Annullato.", reply_markup=types.ReplyKeyboardRemove())
 
 
 @dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 20, state=Form.health_card)
 async def process_invalid_health_card(message: types.Message):
+  """Handle invalid health card number"""
   await message.reply("Il numero della tessera sanitaria deve essere composto da 20 cifre!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Form.health_card)
 async def process_health_card(message: types.Message, state: FSMContext):
+  """Handle valid health card numer and ask for fiscal code"""
+  # save value
   async with state.proxy() as data:
     data["health_card"] = message.text
-
+  # next state
   await Form.next()
   await message.reply("Inserisci il codice fiscale.")
 
 
 @dispatcher.message_handler(lambda message: not validate_fiscal_code(message.text), state=Form.fiscal_code)
 async def process_invalid_fiscal_code(message: types.Message):
+  """Handle invalid fiscal code"""
   await message.reply("Il codice fiscale non è valido!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Form.fiscal_code)
 async def process_fiscal_code(message: types.Message, state: FSMContext):
+  """Handle valid fiscal code and ask for phone number"""
+  # save value
   async with state.proxy() as data:
     data["fiscal_code"] = message.text
-
+  # next state
   await Form.next()
   await message.reply("Inserisci il numero di telefono.")
 
 
 @dispatcher.message_handler(lambda message: not validate_phone(message.text), state=Form.phone)
 async def process_invalid_phone(message: types.Message):
+  """Handle invalid phone number"""
   await message.reply("Il numero di telefono non è valido!\nAl momento sono accettati solo numeri italiani (con o senza prefisso +39)!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Form.phone)
 async def process_phone(message: types.Message, state: FSMContext):
+  """Handle valid phone number and ask for region name"""
+  # save value
   async with state.proxy() as data:
     data["phone"] = message.text if "+" not in message.text else (message.text)[3:]
-
+  # next state
   await Form.next()
-
+  # generate button keyboard of regions
   markup = await gen_markup(await controller.get_regions(), "name", 3)
-
   await message.reply("Scegli la provincia.", reply_markup=markup)
 
 
 @dispatcher.message_handler(lambda message: not controller.check_region(message.text), state=Form.region)
 async def process_invalid_region(message: types.Message):
+  """Handle invalid region name"""
   await message.reply("La provincia scelta non è valida!\nRiprova.")
 
 
+# save region name to be used in process_invalid_postal_code and process_invalid_country
+# TODO 5: find a better solution using state value
 selected_region = None
 
 
 @dispatcher.message_handler(state=Form.region)
 async def process_region(message: types.Message, state: FSMContext):
+  """Handle valid region name and ask for postal code"""
+  # save value (also in global variable)
   async with state.proxy() as data:
     data["region"] = message.text
     global selected_region
     selected_region = message.text
-
+  # next state
   await Form.next()
-
+  # generate button keyboard of postal codes
   markup = await gen_markup(await controller.get_postal_codes(message.text), "number", 3)
-
   await message.reply("Scegli il CAP.", reply_markup=markup)
 
 
 @dispatcher.message_handler(lambda message: not controller.check_postal_code(selected_region, message.text), state=Form.postal_code)
 async def process_invalid_postal_code(message: types.Message):
+  """Handle invalid postal code"""
   await message.reply("Il CAP scelto non è valido!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Form.postal_code)
 async def process_postal_code(message: types.Message, state: FSMContext):
+  """Handle valid postal code and ask for country name"""
+  # save value
   async with state.proxy() as data:
     data["postal_code"] = message.text
-
+    # generate button keyboard of countries
     markup = await gen_markup(await controller.get_countries(data["region"], message.text), "name", 3)
-
+  # next state
   await Form.next()
-
   await message.reply("Scegli il comune.", reply_markup=markup)
 
 
 @dispatcher.message_handler(lambda message: not controller.check_country(selected_region, message.text), state=Form.country)
 async def process_invalid_country(message: types.Message):
+  """Handle invalid country name"""
   await message.reply("Il comune scelto non è valido!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Form.country)
 async def process_country(message: types.Message, state: FSMContext):
+  """Handle valid country name and perform user signup"""
+  # save value
   async with state.proxy() as data:
     data["country"] = message.text
-
+    # create user dict
     user = await decode_fiscal_code(data["fiscal_code"])
     user["_id"] = message.chat.id
     user["health_card"] = data["health_card"]
@@ -195,22 +234,23 @@ async def process_country(message: types.Message, state: FSMContext):
     user["country"] = data["country"]
     user["postal_code"] = data["postal_code"]
     user["phone"] = data["phone"]
-
+    # add user to the database
     await controller.add_user(user)
     LOGGER.info("User registered")
-
+    # send a notification and remove button keyboard
     await bot.send_message(
         message.chat.id,
         f"L'utente è stato registrato con successo con i seguenti dati:\nid: <pre>{user['_id']}</pre>\ntessera sanitaria: <pre>{user['health_card']}</pre>\ncodice fiscale: <pre>{user['fiscal_code']}</pre>\ndata di nascita: <pre>{user['date']}</pre>\nprovincia: <pre>{user['region']}</pre>\ncomune: <pre>{user['country']}</pre>\ncap: <pre>{user['postal_code']}</pre>\ntelefono: <pre>{user['phone']}</pre>\n\nEntro 30 minuti riceverai la prima data disponibile ordinata per distanza.",
         reply_markup=types.ReplyKeyboardRemove(),
         parse_mode=ParseMode.HTML
     )
-
+  # state finished
   await state.finish()
 
 
 @dispatcher.message_handler(commands="cancella")
 async def delete(message: types.Message):
+  """Delete user"""
   if await controller.check_user(message.chat.id):
     await controller.delete_user(message.chat.id)
     LOGGER.info("User deleted.")
@@ -221,6 +261,7 @@ async def delete(message: types.Message):
 
 @dispatcher.message_handler(commands="reset")
 async def reset(message: types.Message):
+  """Enable user notifications (check for appointments)"""
   if await controller.check_user(message.chat.id):
     if not await controller.get_status(message.chat.id):
       await message.reply("Le notifiche sono già abilitate.")
@@ -233,6 +274,7 @@ async def reset(message: types.Message):
 
 @dispatcher.message_handler(commands="stop")
 async def stop(message: types.Message):
+  """Disable user notifications (check for appointments)"""
   if await controller.check_user(message.chat.id):
     if await controller.get_status(message.chat.id):
       await message.reply("Le notifiche sono già disabilitate.")
@@ -245,20 +287,29 @@ async def stop(message: types.Message):
 
 @dispatcher.message_handler(commands="info")
 async def info(message: types.Message):
+  """Send all information"""
   await message.reply(INFO_STR)
 
 
 @dispatcher.message_handler(commands="prenota")
 async def book(message: types.Message):
+  """Handle /prenota command"""
+  # if user exists
   if await controller.check_user(message.chat.id):
+    # if user has already booked an appointment or he disabled notifications
     if await controller.is_vaccinated(message.chat.id):
       await message.reply("Risulti già essere prenotato per la vaccinazione oppure hai disabilitato manualmente le notifiche.")
     else:
+      # if appointments were never fetched
       if not await controller.check_appointments(message.chat.id):
         await message.reply("Non ho ancora controllato se ci sono date disponibili, riprova dopo aver ricevuto la notifica di disponibilità.")
+      # start booking process
       else:
+        # set is_booking to True
         await controller.change_booking_state(message.chat.id, True)
+        # set state
         await Booking.appointment.set()
+        # generate button keyoard of appointments
         markup = await gen_markup(await controller.get_appointments(message.chat.id), "info", 1)
         await message.reply("Scegli un appuntamento tra quelli disponibili. Le date sono ordinate per distanza.", reply_markup=markup)
   else:
@@ -267,23 +318,33 @@ async def book(message: types.Message):
 
 @dispatcher.message_handler(lambda message: not controller.is_same_appointment(message.chat.id, message.text), state=Booking.appointment)
 async def process_invalid_appointment(message: types.Message):
+  """Handle invalid appointment"""
   await message.reply("L'appuntamento scelto non è valido!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Booking.appointment)
 async def process_appointment(message: types.Message, state: FSMContext):
+  """Handle valid appointment"""
+  # add booking request to the file that will be scanned by the booker
   with open("appointments.txt", "a+") as f:
     f.writelines(f"{message.chat.id}%{message.text}")
+  # send a notification and remove button keyboard
   await bot.send_message(message.chat.id, "Richiesta di prenotazione ricevuta, se l'appuntamento sarà ancora disponibile ti verrà chiesto un codice in seguito.", reply_markup=types.ReplyKeyboardRemove())
+  # state finished
   await state.finish()
 
 
 @dispatcher.message_handler(commands="codice")
 async def code(message: types.Message):
+  """Handle /code command"""
+  # if user exists
   if await controller.check_user(message.chat.id):
+    # if user is not booking
     if not await controller.is_booking(message.chat.id):
       await message.reply("Non puoi usare questo comando se non stai prenotando un appuntamento con /prenota")
+    # user is booking
     else:
+      # set state and ask for SMS code
       await Booking.code.set()
       await message.reply("Inserisci il codice che hai ricevuto tramite SMS.")
   else:
@@ -292,23 +353,32 @@ async def code(message: types.Message):
 
 @dispatcher.message_handler(lambda message: not message.text.isdigit() or len(message.text) != 6, state=Booking.code)
 async def process_invalid_code(message: types.Message):
+  """Handle invalid SMS code"""
   await message.reply("Il codice non è valido!\nRiprova.")
 
 
 @dispatcher.message_handler(state=Booking.code)
 async def process_code(message: types.Message, state: FSMContext):
+  """Handle valid SMS code"""
+  # add SMS code request to the file that will be scanned by the booker
   with open("codes.txt", "a+") as f:
     f.writelines(f"{message.chat.id}%{message.text}")
+  # state finished
   await state.finish()
 
 
 @dispatcher.message_handler(commands="disponibili")
 async def available(message: types.Message):
+  """Reply with user available appointments"""
+  # if user exists
   if await controller.check_user(message.chat.id):
+    # if user has already booked an appointment or he disabled notifications
     if await controller.is_vaccinated(message.chat.id):
       await message.reply("Risulti già essere prenotato per la vaccinazione oppure hai disabilitato manualmente le notifiche.")
+    # retrieve appointments
     else:
       appointments = await controller.get_appointments(message.chat.id)
+      # message with all appointments and last fetch date
       appointments_message = "".join(f"{appointment['info']}\n\n" for appointment in appointments)
       last_fetch = await controller.get_last_fetch(message.chat.id)
       await message.reply(f"Questi sono gli ultimi appuntamenti trovati ordinati per distanza:\n\n{appointments_message}Ultimo aggiornamento: {last_fetch}\n\nDigita /prenota per prenotarne uno.")
