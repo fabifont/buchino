@@ -112,6 +112,15 @@ def login(driver, username, password):
   driver.execute_script("document.getElementsByClassName('btn btn-primary btn-icon')[0].click()")
 
 
+def remove_overlay(driver):
+  try:
+    wait_until_present(driver, class_name="modelOverlay", duration=3)
+    overlay = driver.find_element_by_class_name("modelOverlay")
+    driver.execute_script("arguments[0].style.visibility='hidden'", overlay)
+  except Exception:
+    pass
+
+
 def find(driver, region, country, postal_code, phone, date):
   """Perform booking page filling
 
@@ -138,17 +147,15 @@ def find(driver, region, country, postal_code, phone, date):
   driver.find_element_by_id("birthDate").send_keys(date)
   driver.find_element_by_id("phoneNumber").send_keys(phone)
   # remove overlay that hides 'select' elements
-  try:
-    overlay = driver.find_element_by_class_name("modelOverlay")
-    driver.execute_script("arguments[0].style.visibility='hidden'", overlay)
-  except Exception:
-    pass
+  remove_overlay(driver)
   # TODO 4: above overlay can appear also after clicking on a 'select'
   # TODO 5: wait for 'select' elements to appear (useful when the website is slow)
   driver.find_element_by_xpath("//select[@formcontrolname='provinceId']").click()
   Select(driver.find_element_by_xpath("//select[@formcontrolname='provinceId']")).select_by_visible_text(region)
+  remove_overlay(driver)
   driver.find_element_by_xpath("//select[@formcontrolname='cityId']").click()
   Select(driver.find_element_by_xpath("//select[@formcontrolname='cityId']")).select_by_visible_text(country)
+  remove_overlay(driver)
   driver.find_element_by_xpath("//select[@formcontrolname='postalCode']").click()
   Select(driver.find_element_by_xpath("//select[@formcontrolname='postalCode']")).select_by_visible_text(postal_code)
   # click conditions checkbox
@@ -320,7 +327,7 @@ def start_scraper():
         if "Sessione scaduta" in driver.page_source:
           LOGGER.info("IP banned")
           # wait 60 minutes but I think it's useless, need to change IP
-          time.sleep(60 * 60)
+          time.sleep(60 * 30)
       except Exception as e:
         LOGGER.exception(e)
       # wait 5 minutes
