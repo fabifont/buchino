@@ -105,6 +105,55 @@ def check_country(region_name, country_name):
   return len(Country.objects(region=region, name=country_name)) > 0
 
 
+def get_new_users():
+  """Get new users"""
+  return User.objects.aggregate(
+      {"$match": {"is_new": True}},
+      {
+          "$lookup": {
+              "from": "region",
+              "localField": "region",
+              "foreignField": "_id",
+              "as": "_region"
+          }
+      },
+      {"$unwind": "$_region"},
+      {
+          "$lookup": {
+              "from": "country",
+              "localField": "country",
+              "foreignField": "_id",
+              "as": "_country"
+          }
+      },
+      {"$unwind": "$_country"},
+      {
+          "$lookup": {
+              "from": "cap",
+              "localField": "postal_code",
+              "foreignField": "_id",
+              "as": "_cap"
+          }
+      },
+      {"$unwind": "$_cap"},
+      {
+          "$project": {
+              "_id": 1,
+              "health_card": 1,
+              "fiscal_code": 1,
+              "phone": 1,
+              "date": 1,
+              "appointments_by_distance": 1,
+              "appointments_by_date": 1,
+              "is_vaccinated": 1,
+              "region": "$_region.name",
+              "country": "$_country.name",
+              "postal_code": "$_cap.number"
+          }
+      }
+  )
+
+
 def get_users():
   """Get users"""
   return User.objects.aggregate(
@@ -166,6 +215,13 @@ async def update_status(_id, is_vaccinated):
   """Update user.is_vaccinated"""
   User.objects(_id=str(_id)).update(
       set__is_vaccinated=is_vaccinated
+  )
+
+
+def update_is_new(_id, is_new):
+  """Update user.is_new"""
+  User.objects(_id=str(_id)).update(
+      set__is_new=is_new
   )
 
 

@@ -190,6 +190,103 @@ def check(driver):
   return {"appointments_by_distance": appointments_by_distance, "appointments_by_date": appointments_by_date, "last_fetch": time.strftime("%d/%m/%Y %H:%M:%S", time.localtime())}
 
 
+def scraping_process(driver, bot, user):
+  """Perform scraping process for the user specified
+
+  Args:
+      driver: webdriver
+      bot: telegram bot
+      user (dict): user whose appointments are to be checked
+  """
+  # update is new flag
+  controller.update_is_new(user["_id"], False)
+  # skip user if is vaccinated or if its notifications are disabled
+  # TODO: see TODO 1
+  # TODO 2: add 'notifications' flag to user to differentiate vaccinated users and muted notifications users
+  if user["is_vaccinated"]:
+    # next user
+    return
+  # last fetched appointments
+  last_appointments_by_distance = user["appointments_by_distance"]
+  last_appointments_by_date = user["appointments_by_date"]
+  # perform login
+  login(driver, user["health_card"], user["fiscal_code"])
+  # give the website the time to check if user data are fake
+  time.sleep(3)
+  # if user data are fake delete all its data and send him a notification
+  if FAKE_USER in driver.page_source:
+    asyncio.get_event_loop().run_until_complete(controller.delete_user(user["_id"]))
+    asyncio.get_event_loop().run_until_complete(bot.send_message(
+        user["_id"], "Ho cancellato i dati che hai registrato perchè non sono corretti. Rieffettua la registrazione con /registra"))
+    return
+  # perform booking page filling
+  is_vaccinated = find(driver, user["region"], user["country"], user["postal_code"], user["phone"], user["date"])
+  # booking page not filled because user has already booked an appointment
+  if is_vaccinated:
+    # set user is_vaccinated to True to stop checking for him and send him a notification
+    asyncio.get_event_loop().run_until_complete(controller.update_status(user["_id"], is_vaccinated))
+    asyncio.get_event_loop().run_until_complete(bot.send_message(
+        user["_id"], "Ho notato che hai già effettuato una prenotazione perciò non controllerò le date per te.\n\nSe dovessi annullare la prenotazione e volessi essere notificato ancora digita /reset\n\nSe vuoi cancellare i tuoi dati digita /cancella"))
+    # wait 30 seconds for next user
+    time.sleep(30)
+    return
+  # get new appointments
+  result = check(driver)
+  # update user appointments and fetch date
+  controller.update_appointments(user["_id"], result["appointments_by_distance"], result["appointments_by_date"], result["last_fetch"])
+  # number of appointments
+  appointments_by_distance_length = len(result["appointments_by_distance"])
+  appointments_by_date_length = len(result["appointments_by_date"])
+  # if appointments have been found
+  if appointments_by_distance_length > 0 or appointments_by_date_length > 0:
+    new_by_distance = ""
+    # if appointments_by_distance have been found
+    if appointments_by_distance_length > 0:
+      # if user had no appointments_by_distance or first appointment of both old and new appointments is different
+      # setup new_by_distance message
+      if len(last_appointments_by_distance) == 0 or not are_equal(last_appointments_by_distance[0], result["appointments_by_distance"][0]):
+        new_by_distance = f"Nuovo appuntamento ordinato per distanza:\n{result['appointments_by_distance'][0]['date']}\n{result['appointments_by_distance'][0]['place']}\n\n"
+
+    new_by_date = ""
+    # if appointments_by_date have been found
+    if appointments_by_date_length > 0:
+      # if user had no appointments_by_date or first appointment of both old and new appointments is different
+      # setup new_by_distance message
+      if len(last_appointments_by_date) == 0 or not are_equal(last_appointments_by_date[0], result["appointments_by_date"][0]):
+        new_by_date = f"Nuovo appuntamento ordinato per data:\n{result['appointments_by_date'][0]['date']}\n{result['appointments_by_date'][0]['place']}\n\n"
+
+    # if new first appointments have been found send a notification
+    if new_by_distance != "" or new_by_date != "":
+      asyncio.get_event_loop().run_until_complete(bot.send_message(
+          user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /disponibili e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
+  # clear cookies and wait 30 seconds for next user
+  driver.delete_all_cookies()
+  time.sleep(30)
+
+
+def sleep_with_check(driver, bot):
+  """Check for new users and serve them while sleeping for a calculated amount of seconds based on active users number
+
+  Args:
+      driver: webdriver
+      bot: telegram bot
+  """
+  # get active users count
+  active_users = controller.get_active_users()
+  # calculate sleep time after the loop through users is completed
+  if active_users > 0:
+    sleep_time = 60 * int(15 if active_users < 50 else (15 / (active_users / 50)))
+    LOGGER.info(f"Sleep with check for {sleep_time} s")
+    # check for new users every second of sleep
+    for i in range(sleep_time):
+      new_users = controller.get_new_users()
+      for user in new_users:
+        LOGGER.info("New user found while sleeping")
+        # serve new user without waiting
+        scraping_process(driver, bot, user)
+      time.sleep(1)
+
+
 def start_scraper():
   """Start scraper loop"""
   LOGGER.info("Starting scraper.")
@@ -200,6 +297,9 @@ def start_scraper():
   options.headless = True
   # webdriver
   driver = webdriver.Firefox(options=options)
+  # file initialization
+  with open("new_users.txt", "w"):
+    pass
   # loop
   while True:
     try:
@@ -208,73 +308,9 @@ def start_scraper():
       users = controller.get_users()
       # loop through users
       for user in users:
-        # skip user if is vaccinated or if its notifications are disabled
-        # TODO: see TODO 1
-        # TODO 2: add 'notifications' flag to user to differentiate vaccinated users and muted notifications users
-        if user["is_vaccinated"]:
-          # next user
-          continue
-        # last fetched appointments
-        last_appointments_by_distance = user["appointments_by_distance"]
-        last_appointments_by_date = user["appointments_by_date"]
-        # perform login
-        login(driver, user["health_card"], user["fiscal_code"])
-        # give the website the time to check if user data are fake
-        time.sleep(3)
-        # if user data are fake delete all its data and send him a notification
-        if FAKE_USER in driver.page_source:
-          asyncio.get_event_loop().run_until_complete(controller.delete_user(user["_id"]))
-          asyncio.get_event_loop().run_until_complete(bot.send_message(
-              user["_id"], "Ho cancellato i dati che hai registrato perchè non sono corretti. Rieffettua la registrazione con /registra"))
-        # perform booking page filling
-        is_vaccinated = find(driver, user["region"], user["country"], user["postal_code"], user["phone"], user["date"])
-        # booking page not filled because user has already booked an appointment
-        if is_vaccinated:
-          # set user is_vaccinated to True to stop checking for him and send him a notification
-          asyncio.get_event_loop().run_until_complete(controller.update_status(user["_id"], is_vaccinated))
-          asyncio.get_event_loop().run_until_complete(bot.send_message(
-              user["_id"], "Ho notato che hai già effettuato una prenotazione perciò non controllerò le date per te.\n\nSe dovessi annullare la prenotazione e volessi essere notificato ancora digita /reset\n\nSe vuoi cancellare i tuoi dati digita /cancella"))
-          # wait 30 seconds for next user
-          time.sleep(30)
-          continue
-        # get new appointments
-        result = check(driver)
-        # update user appointments and fetch date
-        controller.update_appointments(user["_id"], result["appointments_by_distance"], result["appointments_by_date"], result["last_fetch"])
-        # number of appointments
-        appointments_by_distance_length = len(result["appointments_by_distance"])
-        appointments_by_date_length = len(result["appointments_by_date"])
-        # if appointments have been found
-        if appointments_by_distance_length > 0 or appointments_by_date_length > 0:
-          new_by_distance = ""
-          # if appointments_by_distance have been found
-          if appointments_by_distance_length > 0:
-            # if user had no appointments_by_distance or first appointment of both old and new appointments is different
-            # setup new_by_distance message
-            if len(last_appointments_by_distance) == 0 or not are_equal(last_appointments_by_distance[0], result["appointments_by_distance"][0]):
-              new_by_distance = f"Nuovo appuntamento ordinato per distanza:\n{result['appointments_by_distance'][0]['date']}\n{result['appointments_by_distance'][0]['place']}\n\n"
-
-          new_by_date = ""
-          # if appointments_by_date have been found
-          if appointments_by_date_length > 0:
-            # if user had no appointments_by_date or first appointment of both old and new appointments is different
-            # setup new_by_distance message
-            if len(last_appointments_by_date) == 0 or not are_equal(last_appointments_by_date[0], result["appointments_by_date"][0]):
-              new_by_date = f"Nuovo appuntamento ordinato per data:\n{result['appointments_by_date'][0]['date']}\n{result['appointments_by_date'][0]['place']}\n\n"
-
-          # if new first appointments have been found send a notification
-          if new_by_distance != "" or new_by_date != "":
-            asyncio.get_event_loop().run_until_complete(bot.send_message(
-                user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /disponibili e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
-        # clear cookies and wait 30 seconds for next user
-        driver.delete_all_cookies()
-        time.sleep(30)
-      # get active users count
-      active_users = controller.get_active_users()
-      # calculate sleep time after the loop through users is completed
-      if active_users > 0:
-        sleep_time = 60 * int(15 if active_users < 50 else (15 / (active_users / 50)))
-        time.sleep(sleep_time)
+        scraping_process(driver, bot, user)
+      # sleep with check for new users
+      sleep_with_check(driver, bot)
     except Exception as e:
       LOGGER.exception(e)
       try:
@@ -282,7 +318,7 @@ def start_scraper():
         driver.delete_all_cookies()
         # check for IP ban
         if "Sessione scaduta" in driver.page_source:
-          LOGGER.info("IP bannato")
+          LOGGER.info("IP banned")
           # wait 60 minutes but I think it's useless, need to change IP
           time.sleep(60 * 60)
       except Exception as e:
