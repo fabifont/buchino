@@ -148,6 +148,7 @@ def start_booker():
       with open("appointments.txt", "r") as f:
         bookings = f.readlines()
       for raw_booking in bookings:
+        LOGGER.info("New booking request")
         # remove booking request from the file
         bookings.remove(raw_booking)
         with open("appointments.txt", "w") as f:
@@ -182,6 +183,7 @@ def start_booker():
           result_message = "Il codice che hai fornito non è corretto o è scaduto, oppure l'appuntamento non è più disponibile."
           # booking done
           if result == 0:
+            LOGGER.info("Booking request was successful.")
             result_message = "Prenotazione effettuata con successo. Riceverai un SMS di conferma."
           # booking failed
           elif result == -1:
