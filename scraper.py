@@ -257,6 +257,7 @@ def scraping_process(driver, bot, user):
 
     # if new first appointments have been found send a notification
     if new_by_distance != "" or new_by_date != "":
+      LOGGER.info("New date message sent.")
       asyncio.get_event_loop().run_until_complete(bot.send_message(
           user["_id"], f"{new_by_distance}{new_by_date}Per tutti gli appuntamenti disponibili digita /disponibili e per prenotare digita /prenota oppure effettua la procedura manuale: {LOGIN_URL}\nUsername: <pre>{user['health_card']}</pre>\nPassword: <pre>{user['fiscal_code']}</pre>", parse_mode=ParseMode.HTML))
   # clear cookies and wait 30 seconds for next user
