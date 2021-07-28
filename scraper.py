@@ -12,6 +12,7 @@ from selenium.webdriver.support.ui import Select
 from db import controller as controller
 from utils.config import get_value
 
+
 LOGGER = logging.getLogger()
 
 # login url
