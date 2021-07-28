@@ -240,7 +240,7 @@ async def process_country(message: types.Message, state: FSMContext):
     # send a notification and remove button keyboard
     await bot.send_message(
         message.chat.id,
-        f"L'utente è stato registrato con successo con i seguenti dati:\nid: <pre>{user['_id']}</pre>\ntessera sanitaria: <pre>{user['health_card']}</pre>\ncodice fiscale: <pre>{user['fiscal_code']}</pre>\ndata di nascita: <pre>{user['date']}</pre>\nprovincia: <pre>{user['region']}</pre>\ncomune: <pre>{user['country']}</pre>\ncap: <pre>{user['postal_code']}</pre>\ntelefono: <pre>{user['phone']}</pre>\n\nEntro 30 minuti riceverai la prima data disponibile ordinata per distanza.",
+        f"L'utente è stato registrato con successo con i seguenti dati:\nid: <pre>{user['_id']}</pre>\ntessera sanitaria: <pre>{user['health_card']}</pre>\ncodice fiscale: <pre>{user['fiscal_code']}</pre>\ndata di nascita: <pre>{user['date']}</pre>\nprovincia: <pre>{user['region']}</pre>\ncomune: <pre>{user['country']}</pre>\ncap: <pre>{user['postal_code']}</pre>\ntelefono: <pre>{user['phone']}</pre>\n\nA breve controllerò le date disponibili e ti invierò una notifica.",
         reply_markup=types.ReplyKeyboardRemove(),
         parse_mode=ParseMode.HTML
     )

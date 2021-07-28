@@ -206,7 +206,7 @@ def start_booker():
         driver.delete_all_cookies()
         # check IP ban
         if "Sessione scaduta" in driver.page_source:
-          LOGGER.info("IP bannato")
+          LOGGER.info("IP banned")
           # wait 60 minutes but I think it's useless, need to change IP
           time.sleep(60 * 60)
       except Exception as e:

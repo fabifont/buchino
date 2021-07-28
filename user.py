@@ -17,3 +17,4 @@ class User(mongoengine.Document):
   appointments_by_date = mongoengine.ListField(mongoengine.DictField(), default=[])  # appointments list by date
   last_fetch = mongoengine.StringField(default="")  # last time appointments were fetched
   is_booking = mongoengine.BooleanField(default=False)  # is booking flag
+  is_new = mongoengine.BooleanField(default=True)  # is new flag
