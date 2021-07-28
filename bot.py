@@ -1,15 +1,16 @@
 import numpy
 import math
 import logging
-import controller as controller
-from config import get_value
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.types import ParseMode
 from aiogram.utils import executor
-from validation import validate_fiscal_code, validate_phone, decode_fiscal_code
+
+from db import controller as controller
+from utils.config import get_value
+from utils.validation import validate_fiscal_code, validate_phone, decode_fiscal_code
 
 
 # welcome message (e.g /start)

@@ -1,5 +1,6 @@
 import mongoengine
-from place import Region, Country, Cap
+
+from .place import Region, Country, Cap
 
 
 # User document

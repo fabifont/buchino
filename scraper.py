@@ -1,8 +1,6 @@
 import time
 import asyncio
 import logging
-import controller as controller
-from config import get_value
 from aiogram import Bot
 from aiogram.types import ParseMode
 from selenium import webdriver
@@ -11,6 +9,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
 
+from db import controller as controller
+from utils.config import get_value
 
 LOGGER = logging.getLogger()
 

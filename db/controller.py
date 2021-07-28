@@ -1,5 +1,5 @@
-from place import Region, Country, Cap
-from user import User
+from .place import Region, Country, Cap
+from .user import User
 
 
 async def get_regions():

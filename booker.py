@@ -1,11 +1,12 @@
 import time
 import asyncio
 import logging
-import scraper as scraper
-import controller as controller
-from config import get_value
 from aiogram import Bot
 from selenium import webdriver
+
+import scraper as scraper
+from db import controller as controller
+from utils.config import get_value
 
 
 LOGGER = logging.getLogger()
