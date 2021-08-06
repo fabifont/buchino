@@ -1,0 +1,1 @@
+"""Buchino is a telegram bot that messages you available vaccine appointments in the Lombardia region and allows you to book one"""
